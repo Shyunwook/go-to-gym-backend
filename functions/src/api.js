@@ -98,6 +98,49 @@ router.post("/workouts", async function (req, res) {
 router.get("/workouts", async function (req, res) {
   const day = req.query.day;
   try {
+    const userId = testUserId;
+    const collections = await db
+      .collection(collection_workout)
+      .doc(userId)
+      .listCollections();
+
+    const workouts = collections.map((collection) => {
+      return collection.id;
+    });
+
+    res.send(workouts);
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(400);
+  }
+});
+
+router.get("/records/:workout", async function (req, res) {
+  try {
+    const workout = req.params["workout"];
+    const workoutDocRefs = await db
+      .collection(collection_workout)
+      .doc(testUserId)
+      .collection(workout)
+      .listDocuments();
+
+    const maxSetRecords = await db.getAll(...workoutDocRefs);
+
+    const data = {};
+
+    for (const record of maxSetRecords) {
+      data[record.id] = record.data();
+    }
+
+    res.send(data);
+  } catch (error) {
+    res.sendStatus(400);
+  }
+});
+
+router.get("/records", async function (req, res) {
+  const day = req.query.day;
+  try {
     // const userId = testUserId;
     // const workouts = await db
     //   .collectionGroup(day)
