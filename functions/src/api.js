@@ -9,19 +9,18 @@ const collection_workout = "Workout";
 const CORRECTION_VALUE = 0.45359237;
 
 const testUserId = "Bobby";
-const testDay = "20230310";
+const testDay = "20230312";
 
 router.post("/workouts", async function (req, res) {
   try {
-    const data = json;
+    const data = json2;
     const userId = testUserId;
     const workoutKey = v1();
 
     const now = Date.now();
     const date = new Date(now);
-    const day = `${date.getFullYear()}${(date.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}${date.getDate().toString().padStart(2, "0")}`;
+    const day = testDay;
+    //  const day=   `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, "0")}${date.getDate().toString().padStart(2, "0")}`;
 
     // 일별 운동 데이터 저장
     const docRefByDay = db.collection(collection_day).doc(userId);
@@ -122,9 +121,13 @@ router.get("/records/:workout", async function (req, res) {
       .collection(collection_workout)
       .doc(testUserId)
       .collection(workout)
-      .listDocuments();
+      // .listDocuments();
+      .limit(7);
 
-    const maxSetRecords = await db.getAll(...workoutDocRefs);
+    console.log(await (await workoutDocRefs.get()).docs[0].id);
+    var test = (await workoutDocRefs.get()).docs;
+    // const maxSetRecords = await db.getAll(...workoutDocRefs);
+    const maxSetRecords = await db.getAll(test);
 
     const data = {};
 
@@ -134,6 +137,7 @@ router.get("/records/:workout", async function (req, res) {
 
     res.send(data);
   } catch (error) {
+    console.log(error);
     res.sendStatus(400);
   }
 });
@@ -372,6 +376,37 @@ const json2 = {
               reps: 12,
               weight: 100,
               isKillogram: true,
+              restTime: 93500,
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const json3 = {
+  userId: "Bobby",
+  volume: 14500,
+  performed: [
+    {
+      part: "chest",
+      workouts: [
+        {
+          name: "benchPress",
+          sets: [
+            {
+              set: 1,
+              reps: 10,
+              weight: 10,
+              isKillogram: false,
+              restTime: 93500,
+            },
+            {
+              set: 2,
+              reps: 8,
+              weight: 90,
+              isKillogram: false,
               restTime: 93500,
             },
           ],
