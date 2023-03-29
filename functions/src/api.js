@@ -4,6 +4,10 @@ const { v1 } = require("uuid");
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const db = getFirestore();
 
+const dummyData1 = require('./data/dummy1.json');
+const dummyData2 = require('./data/dummy2.json');
+const dummyData3 = require('./data/dummy3.json');
+
 const collection_day = "Days";
 const collection_workout = "Workout";
 const CORRECTION_VALUE = 0.45359237;
@@ -194,224 +198,125 @@ router.get("/records", async function (req, res) {
   }
 });
 
+router.get('/test', function (req, res) {
+  setTestData();
+  res.send(200);
+});
+
+
+async function setTestData() {
+  const datas = [dummyData1, dummyData2, dummyData3];
+
+  Date.prototype.addDays = function (days) {
+    var date = new Date(this.valueOf());
+    date.setDate(date.getDate() + days);
+    return date;
+  }
+
+  function getRandomIntInclusive(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min; //최댓값도 포함, 최솟값도 포함
+  }
+
+  const dateList = [];
+  const randomData = [];
+  for (let i = 0; i < 10; i++) {
+    const day = new Date();
+    const ramdomDay = day.addDays(getRandomIntInclusive(1, 20));
+    const parsedDay = `${ramdomDay.getFullYear()}${(ramdomDay.getMonth() + 1).toString().padStart(2, "0")}${ramdomDay.getDate().toString().padStart(2, "0")}`
+    dateList.push(parsedDay);
+
+    const randomIndex = getRandomIntInclusive(0, 2);
+    let selectedData = datas[randomIndex];
+    if (randomIndex == 2) {
+      selectedData.performed[0].workouts[0].sets[1].weight = getRandomIntInclusive(5, 15) * 10;
+
+      console.log(JSON.stringify(selectedData));
+    }
+
+    randomData.push(selectedData);
+  }
+
+  for (const [index, data] of Object.entries(randomData)) {
+    var performedList = data["performed"];
+    const workoutKey = v1();
+    const userId = testUserId;
+
+    // 일별 운동 데이터 저장
+    const docRefByDay = db.collection(collection_day).doc(userId);
+    await docRefByDay
+      .collection(dateList[index].toString())
+      .doc(workoutKey)
+      .set({ ...data, timeStamp: Timestamp.fromDate(new Date()) });
+
+    // 운동 별 데이터 데이터 배치 저장
+    const batch = db.batch();
+    const userDocRef = db.collection(collection_workout).doc(userId);
+
+    for (const performed of performedList) {
+      const workoutList = performed.workouts;
+
+      for (const workout of workoutList) {
+        const dataByWorkout = {
+          timestamp: Timestamp.fromDate(new Date()),
+          name: workout.name,
+          sets: workout.sets,
+          part: performed.part,
+        };
+
+        let maximum = 0;
+
+        const entries = workout.sets.entries();
+        for (const [index, set] of entries) {
+          const maximumSet = workout.sets[maximum];
+          const maximumMass = getMass(maximumSet);
+
+          const current = set;
+          const currentMass = getMass(current);
+
+          if (maximumMass < currentMass) {
+            maximum = index;
+          }
+        }
+
+        dataByWorkout.maximumSet = workout.sets[maximum];
+        const prevMaximumInfo = (
+          await userDocRef.collection(workout.name).doc(dateList[index].toString()).get()
+        ).data();
+
+        if (
+          prevMaximumInfo == undefined ||
+          getMass(prevMaximumInfo) < getMass(dataByWorkout.maximumSet)
+        ) {
+          batch.set(
+            userDocRef.collection(workout.name).doc(dateList[index].toString()),
+            dataByWorkout.maximumSet
+          );
+        }
+
+        batch.set(
+          userDocRef
+            .collection(workout.name)
+            .doc(dateList[index].toString())
+            .collection(workoutKey)
+            .doc(data["volume"].toString()),
+          dataByWorkout
+        );
+      }
+    }
+
+    await batch.commit();
+  }
+}
+
+
+
 module.exports = router;
+
 
 function getMass(setInfo) {
   return setInfo.isKillogram
     ? setInfo.weight
     : setInfo.weight * CORRECTION_VALUE;
 }
-
-const json = {
-  userId: "Bobby",
-  volume: 14500,
-  performed: [
-    {
-      part: "chest",
-      workouts: [
-        {
-          name: "benchPress",
-          sets: [
-            {
-              set: 1,
-              reps: 10,
-              weight: 70,
-              isKillogram: true,
-              restTime: 93500,
-            },
-            {
-              set: 2,
-              reps: 8,
-              weight: 75,
-              isKillogram: true,
-              restTime: 93500,
-            },
-            {
-              set: 3,
-              reps: 6,
-              weight: 75,
-              isKillogram: true,
-              restTime: 93500,
-            },
-            {
-              set: 4,
-              reps: 5,
-              weight: 75,
-              isKillogram: true,
-              restTime: 93500,
-            },
-            {
-              set: 5,
-              reps: 5,
-              weight: 80,
-              isKillogram: true,
-              restTime: 93500,
-            },
-          ],
-        },
-        {
-          name: "dumbbelFly",
-          sets: [
-            {
-              set: 1,
-              reps: 12,
-              weight: 90,
-              isKillogram: false,
-              restTime: 93500,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      part: "lowerBody",
-      workouts: [
-        {
-          name: "babelSquat",
-          sets: [
-            {
-              set: 1,
-              reps: 10,
-              weight: 80,
-              isKillogram: true,
-              restTime: 103500,
-            },
-            {
-              set: 2,
-              reps: 8,
-              weight: 85,
-              isKillogram: true,
-              restTime: 103500,
-            },
-            {
-              set: 3,
-              reps: 6,
-              weight: 85,
-              isKillogram: true,
-              restTime: 103500,
-            },
-            {
-              set: 4,
-              reps: 5,
-              weight: 90,
-              isKillogram: true,
-              restTime: 103500,
-            },
-            {
-              set: 5,
-              reps: 4,
-              weight: 90,
-              isKillogram: true,
-              restTime: 103500,
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
-
-const json2 = {
-  userId: "Bobby",
-  volume: 14500,
-  performed: [
-    {
-      part: "chest",
-      workouts: [
-        {
-          name: "benchPress",
-          sets: [
-            {
-              set: 1,
-              reps: 10,
-              weight: 10,
-              isKillogram: false,
-              restTime: 93500,
-            },
-            {
-              set: 2,
-              reps: 8,
-              weight: 110,
-              isKillogram: false,
-              restTime: 93500,
-            },
-          ],
-        },
-        {
-          name: "dumbbelFly",
-          sets: [
-            {
-              set: 1,
-              reps: 12,
-              weight: 40,
-              isKillogram: true,
-              restTime: 93500,
-            },
-            {
-              set: 2,
-              reps: 12,
-              weight: 410,
-              isKillogram: false,
-              restTime: 93500,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      part: "shoulder",
-      workouts: [
-        {
-          name: "overHeadPress",
-          sets: [
-            {
-              set: 1,
-              reps: 12,
-              weight: 100,
-              isKillogram: true,
-              restTime: 93500,
-            },
-            {
-              set: 2,
-              reps: 12,
-              weight: 100,
-              isKillogram: true,
-              restTime: 93500,
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
-
-const json3 = {
-  userId: "Bobby",
-  volume: 14500,
-  performed: [
-    {
-      part: "chest",
-      workouts: [
-        {
-          name: "benchPress",
-          sets: [
-            {
-              set: 1,
-              reps: 10,
-              weight: 10,
-              isKillogram: false,
-              restTime: 93500,
-            },
-            {
-              set: 2,
-              reps: 8,
-              weight: 90,
-              isKillogram: false,
-              restTime: 93500,
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};

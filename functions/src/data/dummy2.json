@@ -1,0 +1,73 @@
+{
+   "userId": "Bobby",
+   "volume": 14500,
+   "performed": [
+      {
+         "part": "chest",
+         "workouts": [
+            {
+               "name": "benchPress",
+               "sets": [
+                  {
+                     "set": 1,
+                     "reps": 10,
+                     "weight": 10,
+                     "isKillogram": false,
+                     "restTime": 93500
+                  },
+                  {
+                     "set": 2,
+                     "reps": 8,
+                     "weight": 20,
+                     "isKillogram": false,
+                     "restTime": 93500
+                  }
+               ]
+            },
+            {
+               "name": "dumbbelFly",
+               "sets": [
+                  {
+                     "set": 1,
+                     "reps": 12,
+                     "weight": 40,
+                     "isKillogram": true,
+                     "restTime": 93500
+                  },
+                  {
+                     "set": 2,
+                     "reps": 12,
+                     "weight": 410,
+                     "isKillogram": false,
+                     "restTime": 93500
+                  }
+               ]
+            }
+         ]
+      },
+      {
+         "part": "shoulder",
+         "workouts": [
+            {
+               "name": "overHeadPress",
+               "sets": [
+                  {
+                     "set": 1,
+                     "reps": 12,
+                     "weight": 100,
+                     "isKillogram": true,
+                     "restTime": 93500
+                  },
+                  {
+                     "set": 2,
+                     "reps": 12,
+                     "weight": 100,
+                     "isKillogram": true,
+                     "restTime": 93500
+                  }
+               ]
+            }
+         ]
+      }
+   ]
+}
