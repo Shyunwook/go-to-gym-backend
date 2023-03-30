@@ -1,6 +1,7 @@
 var express = require("express");
 var router = express.Router();
 const { v1 } = require("uuid");
+const moment = require('moment');
 const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 const db = getFirestore();
 
@@ -98,6 +99,7 @@ router.post("/workouts", async function (req, res) {
   }
 });
 
+// 사용자가 수행했던 운동 리스트 리턴
 router.get("/workouts", async function (req, res) {
   const day = req.query.day;
   try {
@@ -118,6 +120,7 @@ router.get("/workouts", async function (req, res) {
   }
 });
 
+// 운동별 최근 7회 max set 리턴
 router.get("/records/:workout", async function (req, res) {
   try {
     const workout = req.params["workout"];
@@ -125,14 +128,10 @@ router.get("/records/:workout", async function (req, res) {
       .collection(collection_workout)
       .doc(testUserId)
       .collection(workout)
-      // .listDocuments();
-      .limit(7);
+      .limit(7).get();
+    
 
-    console.log(await (await workoutDocRefs.get()).docs[0].id);
-    var test = (await workoutDocRefs.get()).docs;
-    // const maxSetRecords = await db.getAll(...workoutDocRefs);
-    const maxSetRecords = await db.getAll(test);
-
+    const maxSetRecords = await db.getAll(...workoutDocRefs.docs.map((doc) => doc.ref));
     const data = {};
 
     for (const record of maxSetRecords) {
@@ -149,56 +148,24 @@ router.get("/records/:workout", async function (req, res) {
 router.get("/records", async function (req, res) {
   const day = req.query.day;
   try {
-    // const userId = testUserId;
-    // const workouts = await db
-    //   .collectionGroup(day)
-    //   .where("userId", "==", userId)
-    //   .get();
-
-    // const result = workouts.docs.map((doc) => doc.data());
-
-    // res.send(result);
-
-    const performanceData = [];
-
     const userId = testUserId;
-    const collections = await db
-      .collection(collection_workout)
-      .doc(userId)
-      .listCollections();
-    for (const workout of collections) {
-      const workoutData = {
-        name: workout.id,
-        data: [],
-      };
+    const workouts = await db
+      .collectionGroup(day)
+      .where("userId", "==", userId)
+      .get();
 
-      const dates = await workout.get();
-
-      for (const date of dates.docs) {
-        workoutData.data.push({ date: date.id, ...date.data() });
-      }
-      performanceData.push(workoutData);
-    }
-    console.log(performanceData);
-    /// 일단 아래처럼 데이터 세팅까지 완료
-    /// [
-    ///   { name: 'babelSquat', data: [ [Object], [Object] ] },
-    ///   { name: 'benchPress', data: [ [Object], [Object] ] },
-    ///   { name: 'dumbbelFly', data: [ [Object], [Object] ] },
-    ///   { name: 'overHeadPress', data: [ [Object] ] }
-    /// ]
-    /// 처음부터 모든 운동, 날짤 리스트 조회하면 너무 비효율적이니까
-    /// 운동 리스트 먼저 받아서 화면에 뿌리고 원하는 운동 선택할 시, 해당 운동 데이터 리턴하도록 api 쪼개자.
-    /// 운동데이터를 날짜 최신이 위에 쌓이도록 내림차순으로 쌓으면 될 듯?!
-
-    res.sendStatus(200);
+    const result = workouts.docs.map((doc) => doc.data());
+    console.log(Date(result.timeStamp));
+    res.send(result);
+    // res.sendStatus(200);
   } catch (error) {
     console.log(error);
     res.sendStatus(400);
   }
 });
 
-router.get('/test', function (req, res) {
+// 더미데이터 세팅하는 개발용 api
+router.post('/test', function (req, res) {
   setTestData();
   res.send(200);
 });
@@ -239,16 +206,17 @@ async function setTestData() {
   }
 
   for (const [index, data] of Object.entries(randomData)) {
-    var performedList = data["performed"];
+    const performedList = data["performed"];
     const workoutKey = v1();
     const userId = testUserId;
+    const targetDate = dateList[index].toString();
 
     // 일별 운동 데이터 저장
     const docRefByDay = db.collection(collection_day).doc(userId);
     await docRefByDay
-      .collection(dateList[index].toString())
+      .collection(targetDate)
       .doc(workoutKey)
-      .set({ ...data, timeStamp: Timestamp.fromDate(new Date()) });
+      .set({ ...data, timeStamp: Timestamp.fromDate(moment(targetDate, "YYYYMMDD").toDate()) });
 
     // 운동 별 데이터 데이터 배치 저장
     const batch = db.batch();
@@ -259,7 +227,7 @@ async function setTestData() {
 
       for (const workout of workoutList) {
         const dataByWorkout = {
-          timestamp: Timestamp.fromDate(new Date()),
+          timestamp: Timestamp.fromDate(moment(targetDate, "YYYYMMDD").toDate()),
           name: workout.name,
           sets: workout.sets,
           part: performed.part,
